@@ -5,7 +5,7 @@ using UnityEngine;
 using VRC;
 using VRC.DataModel;
 
-[assembly: MelonInfo(typeof(Astrum.AstralStare), "AstralStare", "0.1.0", downloadLink: "github.com/Astrum-Project/AstralStare")]
+[assembly: MelonInfo(typeof(Astrum.AstralStare), "AstralStare", "0.1.1", downloadLink: "github.com/Astrum-Project/AstralStare")]
 [assembly: MelonGame("VRChat", "VRChat")]
 [assembly: MelonColor(ConsoleColor.DarkMagenta)]
 
@@ -43,12 +43,14 @@ namespace Astrum
 
         public static void Enable(Transform transform)
         {
-            enabled = true;
             target = transform;
             dest = VRC.SDKBase.Networking.LocalPlayer.gameObject.transform;
 
             if (!enabled)
+            {
+                enabled = true;
                 Update += Stare;
+            }
         }
 
         private static void Stare()
