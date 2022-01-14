@@ -1,11 +1,13 @@
-﻿using MelonLoader;
+﻿using Astrum.AstralCore.UI.Attributes;
+using MelonLoader;
 using System;
 using System.Linq;
 using UnityEngine;
 using VRC;
 using VRC.DataModel;
+using VRC.SDKBase;
 
-[assembly: MelonInfo(typeof(Astrum.AstralStare), "AstralStare", "0.1.2", downloadLink: "github.com/Astrum-Project/AstralStare")]
+[assembly: MelonInfo(typeof(Astrum.AstralStare), "AstralStare", "0.2.0", downloadLink: "github.com/Astrum-Project/AstralStare")]
 [assembly: MelonGame("VRChat", "VRChat")]
 [assembly: MelonColor(ConsoleColor.DarkMagenta)]
 
@@ -13,43 +15,61 @@ namespace Astrum
 {
     public class AstralStare : MelonMod
     {
-        private static Action Update = new Action(() => {});
         private static Transform target;
         private static Transform dest;
+
         private static bool enabled = false;
-
-        public override void OnUpdate()
+        [UIProperty<bool>("Stare", "Enabled")]
+        public static bool Enabled
         {
-            Update();
+            get => enabled;
+            set
+            {
+                if (enabled == value) return;
 
-            if (!Input.GetKey(KeyCode.Tab) || !Input.GetKeyDown(KeyCode.S)) return;
-
-            if (UserSelectionManager.field_Private_Static_UserSelectionManager_0.field_Private_APIUser_1 is null)
-                Disable();
-            else Enable(PlayerManager.prop_PlayerManager_0
-                .field_Private_List_1_Player_0
-                .ToArray()
-                .FirstOrDefault(a => a.field_Private_APIUser_0.id == UserSelectionManager.field_Private_Static_UserSelectionManager_0.field_Private_APIUser_1.id)
-                .transform);
+                if (value)
+                    Enable();
+                else Disable();
+            }
         }
+
+        [UIField<bool>("Stare", "LookAway")]
+        public static bool lookAway;
 
         public static void Disable()
         {
             if (!enabled) return;
             enabled = false;
 
-            Update -= Stare;
+            AstralCore.Events.OnUpdate -= Stare;
         }
 
-        public static void Enable(Transform transform)
+        public static void Enable(Transform transform = null)
         {
+            if (transform is null)
+            {
+                VRCPlayerApi player = VRCPlayerApi.AllPlayers.Find(
+                    UnhollowerRuntimeLib.DelegateSupport.ConvertDelegate<Il2CppSystem.Predicate<VRCPlayerApi>>(
+                        new Predicate<VRCPlayerApi>(x => x.displayName == AstralCore.Managers.SelectionManager.SelectedPlayer.displayName)
+                    )
+                );
+
+                if (player == null)
+                {
+                    AstralCore.Logger.Notif("You don't have anyone selected");
+                    return;
+                }
+
+                transform = player.gameObject.transform;
+            }
+
             target = transform;
-            dest = VRC.SDKBase.Networking.LocalPlayer.gameObject.transform;
+            dest = Networking.LocalPlayer.gameObject.transform;
 
             if (enabled) return;
             enabled = true;
 
-            Update += Stare;
+            AstralCore.Events.OnUpdate += Stare;
         }
 
         private static void Stare()
@@ -60,7 +80,12 @@ namespace Astrum
                 return;
             }
 
-            dest.LookAt(target);
+            // less optimized by a slight bit but its not work the effort
+            if (lookAway)
+                // https://forum.unity.com/threads/getting-an-object-to-look-away-from-another.297022/
+                dest.rotation = Quaternion.LookRotation(dest.position - target.position);
+            else dest.LookAt(target);
+
             dest.rotation = Quaternion.Euler(0, dest.eulerAngles.y, 0);
         }
     }
